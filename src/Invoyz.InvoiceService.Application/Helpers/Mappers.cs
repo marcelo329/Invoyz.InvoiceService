@@ -7,6 +7,7 @@ public static class Mappers
 {
     public static CustomerContract ToCustomerContract(this CustomerEntity customer)
         => new CustomerContract(
+                Id: customer.Id,
                 Address: customer.Address,
                 CreatedAt: customer.CreatedAt,
                 Email: customer.Email,
