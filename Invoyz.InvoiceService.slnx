@@ -1,8 +1,8 @@
 <Solution>
-  <Project Path="Invoyz.InvoiceService.Application/Invoyz.InvoiceService.Application.csproj" />
-  <Project Path="Invoyz.InvoiceService.Contracts/Invoyz.InvoiceService.Contracts.csproj" />
-  <Project Path="Invoyz.InvoiceService.Domains/Invoyz.InvoiceService.Domains.csproj" />
-  <Project Path="Invoyz.InvoiceService.Infra/Invoyz.InvoiceService.Infra.csproj" />
-  <Project Path="Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj" />
-  <Project Path="Invoyz.InvoiceService/Invoyz.InvoiceService.csproj" />
+  <Project Path="src/Invoyz.InvoiceService.Application/Invoyz.InvoiceService.Application.csproj" />
+  <Project Path="src/Invoyz.InvoiceService.Contracts/Invoyz.InvoiceService.Contracts.csproj" />
+  <Project Path="src/Invoyz.InvoiceService.Domains/Invoyz.InvoiceService.Domains.csproj" />
+  <Project Path="src/Invoyz.InvoiceService.Infra/Invoyz.InvoiceService.Infra.csproj" />
+  <Project Path="src/Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj" />
+  <Project Path="src/Invoyz.InvoiceService/Invoyz.InvoiceService.csproj" />
 </Solution>
