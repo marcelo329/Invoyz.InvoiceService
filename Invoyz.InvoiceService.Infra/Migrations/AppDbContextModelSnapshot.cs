@@ -57,7 +57,7 @@ namespace Invoyz.InvoiceService.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers");
                 });
 
             modelBuilder.Entity("Invoyz.InvoiceService.Domains.Entities.InvoiceEntity", b =>
@@ -108,7 +108,11 @@ namespace Invoyz.InvoiceService.Infra.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("Invoices", (string)null);
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = 0");
+
+                    b.ToTable("Invoices");
                 });
 
             modelBuilder.Entity("Invoyz.InvoiceService.Domains.Entities.InvoiceLineEntity", b =>
@@ -156,7 +160,7 @@ namespace Invoyz.InvoiceService.Infra.Migrations
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("InvoiceLines", (string)null);
+                    b.ToTable("InvoiceLines");
                 });
 
             modelBuilder.Entity("Invoyz.InvoiceService.Domains.Entities.ProductEntity", b =>
@@ -193,7 +197,7 @@ namespace Invoyz.InvoiceService.Infra.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Products", (string)null);
+                    b.ToTable("Products");
                 });
 
             modelBuilder.Entity("Invoyz.InvoiceService.Domains.Entities.InvoiceEntity", b =>

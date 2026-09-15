@@ -5,7 +5,7 @@ description: Add a new REST endpoint or CQRS slice (command/query, handler, cont
 
 # Adding an endpoint to Invoyz
 
-Every operation is one vertical slice through the layers. Follow the existing Customers slice as the reference implementation.
+Every operation is one vertical slice through the layers. Four slices exist — Customers, Products, Invoices, InvoiceLines — so copy the closest one: Products for plain CRUD, Invoices for a parent with children, InvoiceLines for a nested sub-resource.
 
 ## Layout
 
@@ -34,7 +34,7 @@ Invoyz.InvoiceService/Controllers/            controller action
 - Command: `IRequest<Error?>` — null means success
 - Create: `IRequest<ErrorOr<Guid>>`
 
-A by-id query should derive from `BaseGetById`.
+A by-id query should derive from `BaseCQRSWithId`.
 
 **3. Handler.** Constructor-inject the repository. Return `Error.NotFound` / `Error.Conflict` / `Error.Validation` rather than throwing — `BaseController.GetErrorStatusCode` maps those to 404 / 409 / 400, and anything else to 500. MediatR scans the Application assembly, so no registration is needed.
 
@@ -62,13 +62,20 @@ public async Task<IActionResult> Get([FromRoute] Guid id, CancellationToken canc
 
 `ProducesResponseType` is OpenAPI metadata only — it documents a status code, it does not produce one. Verify the real status with a request; don't read it off Swagger.
 
-Do **not** put a `[Route]` attribute on the controller class. A derived `[Route]` replaces `BaseController`'s `api/v{version:apiVersion}/[controller]` template instead of combining with it, which silently unversions every action on that controller.
+A new controller derives from `BaseController` and inherits the route template and `[ApiController]`. Do **not** add a `[Route]` for a top-level resource: a derived `[Route]` replaces `api/v{version:apiVersion}/[controller]` instead of combining with it, silently unversioning every action.
 
-A new controller derives from `BaseController` and inherits the template and `[ApiController]`.
+For a **nested** sub-resource the `[Route]` is required, and must spell the version segment out itself — see `InvoiceLinesController`:
+
+```csharp
+[Route("api/v{version:apiVersion}/Invoices/{invoiceId:guid}/Lines")]
+```
+
+Every action then takes the parent id as a route parameter, and handlers scope their lookup by it so a child id used against the wrong parent returns 404 rather than another parent's data.
 
 **7. Integration test.** In `CustomerControllerIntegrationTests` style: `#region Arrange` / act / `#region Assert`, seed through the DbContext, exercise through `HttpClient`, and verify persistence by reading the DbContext back rather than trusting the response alone. Run it with the `run-tests` skill.
 
 ## Notes
 
+- Money on invoices and lines is derived in `Application/Helpers/InvoiceTotals.cs` and never taken from a payload. Any handler touching a line must call `ApplyLineTotals` then `Recalculate` on the parent invoice, and save the invoice.
 - Schema changes need a migration; see the `ef-migrations` skill.
 - To exercise an endpoint against a real database, apply migrations first (`dotnet ef database update`), then `dotnet run --project Invoyz.InvoiceService`. Skipping the migration gives an empty `invoyz.db` and `no such table` on every request.

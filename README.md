@@ -110,6 +110,8 @@ dotnet ef database update --project Invoyz.InvoiceService.Infra --startup-projec
 
 Entities are `Customers`, `Products`, `Invoices` and `InvoiceLines`, all deriving from `BaseEntity` (`Id`, `IsDeleted`, `DeletedAt`, `CreatedAt`, `LastModifiedAt`).
 
+`AppDbContext.OnModelCreating` adds a **filtered** unique index on `Invoices.InvoiceNumber` (`"IsDeleted" = 0`), so uniqueness matches what the handlers enforce and a soft-deleted invoice does not reserve its number forever. `HasFilter` is a relational API, which is why Application references `Microsoft.EntityFrameworkCore.Relational`.
+
 ## Running the tests
 
 `Invoyz.InvoiceService.Tests` boots the real API through `WebApplicationFactory`. `CustomWebApplicationFactory` swaps the configured SQLite file for a single `DataSource=:memory:` connection held open for the lifetime of the fixture, and applies the Infra migrations to it in `CreateHost`, so every run starts from the real schema.
@@ -124,9 +126,9 @@ dotnet build Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj
 ./Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe
 ```
 
-Tests within a class share one fixture and therefore one database, so each test reseeds via `SeedTwentyCustomersAsync`, which clears the `Customers` table first.
+Tests within a class share one fixture and therefore one database, so each test reseeds through its own seed helper, which clears the relevant tables first.
 
-`CustomerControllerIntegrationTests` covers all five endpoints — 21 test methods, 27 cases including theories.
+Four integration test classes — `CustomerControllerIntegrationTests`, `ProductControllerIntegrationTests`, `InvoiceControllerIntegrationTests`, `InvoiceLineControllerIntegrationTests` — cover every endpoint: 94 cases in total. Each class gets its own fixture and therefore its own in-memory database.
 
 Note that the integration tests use their own in-memory database. Running the API itself still needs `dotnet ef database update` first; without it SQLite creates an empty `invoyz.db` on connect and every request fails with `no such table: Customers`.
 
@@ -134,15 +136,42 @@ Note that the integration tests use their own in-memory database. Running the AP
 
 All routes are versioned through `BaseController`'s `api/v{version:apiVersion}/[controller]` template. The default version is `1.0`.
 
-| Method | Route | Success | Notes |
-| --- | --- | --- | --- |
-| GET | `/api/v1/Customers?page=1&pageSize=10` | 200 | `page` and `pageSize` are `ushort`, defaulting to 1 and 10 |
-| GET | `/api/v1/Customers/{id}` | 200 | `Guid.Empty` → 400 |
-| POST | `/api/v1/Customers` | 201 + `Location` | Body: `CreateCustomerContract` |
-| PUT | `/api/v1/Customers/{id}` | 200 | Body: `UpdateCustomerContract`; the **route** id is authoritative |
-| DELETE | `/api/v1/Customers/{id}` | 204 | Soft delete: sets `IsDeleted`; `Guid.Empty` → 400 |
+Four resources follow the same shape. `page` and `pageSize` are `ushort`, defaulting to 1 and 10; `Guid.Empty` in a route returns 400; POST returns 201 with a `Location` header; DELETE returns 204 and soft-deletes.
 
-Soft-deleted customers are excluded from both reads, and their VAT number becomes reusable.
+| Resource | Routes |
+| --- | --- |
+| Customers | `/api/v1/Customers`, `/api/v1/Customers/{id}` |
+| Products | `/api/v1/Products`, `/api/v1/Products/{id}` |
+| Invoices | `/api/v1/Invoices`, `/api/v1/Invoices/{id}` |
+| Invoice lines | `/api/v1/Invoices/{invoiceId}/Lines`, `/api/v1/Invoices/{invoiceId}/Lines/{id}` |
+
+On PUT the **route** id is authoritative; update contracts carry no `Id`.
+
+### Resource rules
+
+**Customers** — VAT number unique among live customers; 409 on collision.
+
+**Products** — `UnitPrice >= 0`, `TaxRate` between 0 and 1. Deleting a product still referenced by a live invoice line returns 409.
+
+**Invoices** — created with at least one line in the same payload; an empty `lines` array is a 400. `InvoiceNumber` is unique among live invoices (enforced by a filtered unique index as well as the handler), `CustomerId` must resolve, and `DueDate` cannot precede `IssueDate`. `Status` is one of `Draft`, `Sent`, `Paid`, `Overdue`, accepted case-insensitively and stored canonically. Deleting an invoice cascades the soft delete to its lines.
+
+**Invoice lines** — addressed only through their parent invoice; a line id used against the wrong invoice reads as 404. `UnitPrice` and `TaxRate` are optional and snapshot from the product when omitted, so a line keeps the price that applied when it was raised. Deleting the last remaining line returns 409 — delete the invoice instead.
+
+### Money
+
+Line and invoice money is derived in `Application/Helpers/InvoiceTotals.cs` and never read from a payload:
+
+```
+LineTotal  = Quantity * UnitPrice
+LineTax    = LineTotal * TaxRate
+SubTotal   = sum of live LineTotal
+TaxTotal   = sum of live LineTax
+GrandTotal = SubTotal + TaxTotal
+```
+
+Rounded to 2 decimal places, away from zero. Every line mutation recalculates its invoice, so the stored rollup cannot drift from the lines it summarises.
+
+Soft-deleted rows are excluded from all reads, and the unique values they held (customer VAT number, invoice number) become reusable.
 
 `BaseController` maps `ErrorOr` failures to status codes: `Conflict` → 409, `Validation` → 400, `NotFound` → 404, everything else → 500.
 
@@ -152,5 +181,5 @@ Request validation is FluentValidation driven through a MediatR pipeline behavio
 
 The behavior returns the handler's own response type carrying `Error.Validation` rather than throwing — throwing would surface as a 500, since the status-code mapping has no case for `ValidationException`.
 
-Current rules: `CreateCustomerCommandValidator` requires Name, Address, Email (well-formed) and VatNumber; `UpdateCustomerCommandValidator` adds a non-empty `Id` on top of those. Paging parameters are not yet validated.
+Each slice has Create/Update/Delete validators. Paging parameters are still unvalidated (see CLAUDE.md, Known gaps).
 

@@ -14,11 +14,11 @@ public abstract class BaseRepository<TEntity> where TEntity : BaseEntity
         this.appDbContext = appDbContext;
     }
 
-    public ValueTask<EntityEntry<TEntity>> CreateAsync(TEntity entity, CancellationToken cancellationToken)
+    public async ValueTask<EntityEntry<TEntity>> CreateAsync(TEntity entity, CancellationToken cancellationToken)
     {
         entity.CreatedAt = DateTimeOffset.UtcNow;
-        var result = appDbContext.AddAsync(entity, cancellationToken);
-        appDbContext.SaveChangesAsync();
+        var result = await appDbContext.AddAsync(entity, cancellationToken);
+        await appDbContext.SaveChangesAsync(cancellationToken);
         return result;
     }
 

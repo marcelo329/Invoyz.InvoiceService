@@ -64,7 +64,11 @@ Dependencies: `Invoyz.InvoiceService -> Application, Contracts, Infra`; `Infra -
 
 `Controllers/BaseController.cs` carries the route template `api/v{version:apiVersion}/[controller]` and `[ApiController]`, and exposes five generic dispatch methods (`GetAsync`, `GetByIdAsync`, `PostAsync`, `PutAsync`, `DeleteAsync`). Controllers only declare attributes and forward to `base`.
 
-Route attributes do **not** combine across inheritance — a `[Route]` on a derived controller replaces the base template and silently unversions the endpoint. Don't add one.
+Route attributes do **not** combine across inheritance — a `[Route]` on a derived controller replaces the base template rather than extending it. Don't add one unless you are deliberately declaring a nested resource, and then spell the version segment out yourself or the endpoint is silently unversioned. `InvoiceLinesController` is the only controller that does this:
+
+```csharp
+[Route("api/v{version:apiVersion}/Invoices/{invoiceId:guid}/Lines")]
+```
 
 `ErrorOr` failures map to status codes in `GetErrorStatusCode`: `Conflict` → 409, `Validation` → 400, `NotFound` → 404, everything else → 500. Commands return `Error?` (null = success); queries return `ErrorOr<T>`. Success dispatch differs per verb: `Ok()` for PUT, `NoContent()` for DELETE, `Created($"{Request.Path}/{id}", id)` for POST — the last stays generic so the base class never names a derived controller.
 
@@ -80,6 +84,16 @@ The behavior does **not** throw on failure. It builds the handler's own response
 
 `BaseRepository<TEntity>` constrains to `BaseEntity` (`Id`, `IsDeleted`, `DeletedAt?`, `CreatedAt`, `LastModifiedAt?`). Deletes are **soft** — `DeleteAsync` sets `IsDeleted`, and reads filter `!a.IsDeleted` explicitly in each query. There is no EF global query filter, so any new read must repeat that predicate.
 
+Soft delete also means uniqueness is scoped to live rows: a deleted customer releases its VAT number and a deleted invoice releases its number. The unique index on `Invoices.InvoiceNumber` is filtered (`"IsDeleted" = 0`) to match.
+
+### Invoice money
+
+`Application/Helpers/InvoiceTotals.cs` owns every derived amount. `ApplyLineTotals` sets `LineTotal`/`LineTax` on a line; `Recalculate` rolls live lines up into the invoice `SubTotal`/`TaxTotal`/`GrandTotal`. Amounts are never accepted from a payload.
+
+Any handler that touches a line must call both and then save **the invoice** — the line is attached to the tracked invoice graph, so one `UpdateAsync` persists the line and the refreshed rollup together. Skipping `Recalculate` leaves the stored totals silently disagreeing with the lines.
+
+Line `UnitPrice`/`TaxRate` are optional on input and snapshot from the product when omitted, so a line records the price that applied when it was raised rather than following later product edits.
+
 ### Adding a vertical slice
 
 Under `Application/CQRS/<Entity>/{Commands,Queries}/{Models,Handlers,Validators}`: a request record (`IRequest<ErrorOr<T>>` or `IRequest<Error?>`), its handler, optionally a FluentValidation validator. Inbound contracts go in `Contracts/InboundContracts/`, outbound in `Contracts/InboundContracts/OutboundContracts/`. Contract→command mapping lives in `Invoyz.InvoiceService/Extensions/Mappers.cs`; entity→contract mapping in `Application/Helpers/Mappers.cs`.
@@ -94,14 +108,13 @@ Route ids are authoritative: `MapToUpdateCustomerCommand(contract, id)` binds th
 
 Two constraints worth knowing before editing it: building a second `ServiceProvider` inside `ConfigureServices` opens a *different* `:memory:` database, so schema work must use the host's provider; and the factory's own `UseSqlite` must repeat `MigrationsAssembly`, or `Migrate()` finds no migrations and silently creates nothing.
 
-Tests in a class share one fixture and one database, so each test reseeds via `SeedTwentyCustomersAsync`, which clears the table first.
+Tests in a class share one fixture and one database, so each test reseeds through its own seed helper, which clears the relevant tables first. Each test class gets its own fixture, hence its own in-memory database.
 
 ## Known gaps
 
-The 27 tests pass. These are open issues the suite does **not** catch — verified against the running API, not inferred. Tests here encode intended behaviour, so if one fails, fix the code rather than weakening the assertion.
+The 94 tests pass. These are open issues the suite does **not** catch — verified against the running API, not inferred. Tests here encode intended behaviour, so if one fails, fix the code rather than weakening the assertion.
 
 - **Paging ignores global ordering.** `GetListAsync` applies `Skip`/`Take` with no `OrderBy`, and `GetCustomersQueryHandler` sorts only the page it received. Which rows land on which page is undefined; EF logs a warning every run. The `Get_*` tests can't catch it because they build expectations the same way the code does.
 - **`page=0` silently duplicates page 1.** Controller params are `ushort`, so `-1` and values above 65535 fail model binding with a 400 that reads like validation but isn't. `0` binds fine, and `Skip((0-1) * n)` becomes a negative `OFFSET` that SQLite treats as 0. There is no `GetCustomersQueryValidator`, and `GetCustomersQuery` still declares `int Page, int PageSize`, so the `ushort` guard exists only at the controller edge.
-- **`BaseRepository.CreateAsync` does not await `SaveChangesAsync`.** The task is discarded, `cancellationToken` is not passed, and exceptions inside it are unobserved. It currently completes in time because in-memory SQLite is fast — that is luck, not ordering.
 - **Entities redeclare `Id`**, hiding `BaseEntity.Id` (CS0108 on all four).
-- **`AppDbContext` has no `OnModelCreating`** — the whole schema comes from conventions.
+- **`OnModelCreating` configures only indexes** — column shapes still come entirely from conventions.

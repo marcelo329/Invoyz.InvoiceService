@@ -51,7 +51,7 @@ A test host is still running, almost always a Visual Studio debug session paused
 
 ## Interpreting failures
 
-All 27 tests currently pass. They are written against intended behaviour, so a failure reports a real product bug — report the cause and fix the code; never weaken an assertion to make a test pass.
+All 94 tests currently pass. They are written against intended behaviour, so a failure reports a real product bug — report the cause and fix the code; never weaken an assertion to make a test pass.
 
 Green is not proof the flow is correct. The suite misses issues listed under "Known gaps" in CLAUDE.md, notably paging order, because some tests build their expectation the same way the code computes the result. To check a flow properly, exercise the running API:
 
