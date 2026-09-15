@@ -5,20 +5,19 @@ using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
 using Invoyz.InvoiceService.Extensions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 
 namespace Invoyz.InvoiceService.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
     public class CustomersController(IMediator mediator) : BaseController(mediator)
     {
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IReadOnlyCollection<CustomerContract>))]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Get(
-            [FromRoute] int page,
-            [FromRoute] int pageSize,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            [FromQuery] ushort page = 1,
+            [FromQuery]ushort pageSize = 10)
             => await base.GetAsync<GetCustomersQuery,CustomerContract>(new GetCustomersQuery(page, pageSize), cancellationToken);
 
         [HttpGet("{id}")]
@@ -36,7 +35,7 @@ namespace Invoyz.InvoiceService.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Update(
-            Guid id,
+            [FromRoute] Guid id,
             [FromBody] UpdateCustomerContract updateCustomer,
             CancellationToken cancellationToken)
             => await base.PutAsync(updateCustomer.MapToUpdateCustomerCommand(id), cancellationToken);
@@ -55,7 +54,7 @@ namespace Invoyz.InvoiceService.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Delete(
-            Guid id,
+            [FromRoute] Guid id,
             CancellationToken cancellationToken)
             => await base.DeleteAsync(new DeleteCustomerCommand(id), cancellationToken);
     }

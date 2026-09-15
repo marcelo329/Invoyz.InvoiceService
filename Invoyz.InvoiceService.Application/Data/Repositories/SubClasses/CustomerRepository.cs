@@ -13,5 +13,5 @@ public sealed class CustomerRepository : BaseRepository<CustomerEntity>, ICustom
         => base.appDbContext
         .Set<CustomerEntity>()
         .AsNoTracking()
-        .FirstOrDefaultAsync(a => a.VatNumber.ToLower().Equals(vatNumber.ToLower()), cancellationToken);
+        .FirstOrDefaultAsync(a => a.VatNumber.ToLower().Equals(vatNumber.ToLower()) && !a.IsDeleted, cancellationToken);
 }

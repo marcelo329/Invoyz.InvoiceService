@@ -17,18 +17,21 @@ public abstract class BaseRepository<TEntity> where TEntity : BaseEntity
     public ValueTask<EntityEntry<TEntity>> CreateAsync(TEntity entity, CancellationToken cancellationToken)
     {
         entity.CreatedAt = DateTimeOffset.UtcNow;
-        return appDbContext.AddAsync(entity, cancellationToken);
+        var result = appDbContext.AddAsync(entity, cancellationToken);
+        appDbContext.SaveChangesAsync();
+        return result;
     }
 
     public async Task<TEntity?> GetById(Guid Id, CancellationToken cancellationToken)
         => await appDbContext
         .Set<TEntity>()
-        .FirstOrDefaultAsync(a => a.Id.Equals(Id), cancellationToken);
+        .FirstOrDefaultAsync(a => a.Id.Equals(Id) && !a.IsDeleted, cancellationToken);
 
     public async Task<IReadOnlyCollection<TEntity>> GetListAsync(int page, int totalRows, CancellationToken cancellationToken)
         => await appDbContext
         .Set<TEntity>()
         .AsNoTracking()
+        .Where(a => !a.IsDeleted)
         .Skip((page -1) * totalRows)
         .Take(totalRows)
         .ToListAsync(cancellationToken);

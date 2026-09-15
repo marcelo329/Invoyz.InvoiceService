@@ -9,7 +9,10 @@ public static class Bootstrap
 {
     public static IServiceCollection ConfigureSqliteAsDatabaseEngine(this IServiceCollection services, ConfigurationManager configuration)
     {
-        services.AddDbContext<AppDbContext>(opt => opt.UseSqlite(configuration.GetConnectionString("Sqlite")));
+        services.AddDbContext<AppDbContext>(opt =>
+        opt.UseSqlite(
+            configuration.GetConnectionString("Sqlite"),
+            sqlite => sqlite.MigrationsAssembly("Invoyz.InvoiceService.Infra")));
         return services;
     }
 }

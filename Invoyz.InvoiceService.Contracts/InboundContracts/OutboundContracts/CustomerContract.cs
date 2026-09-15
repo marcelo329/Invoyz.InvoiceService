@@ -6,5 +6,5 @@ public record CustomerContract(
     string Email,
     string VatNumber,
     DateTimeOffset CreatedAt,
-    DateTimeOffset LastModifiedAt
+    DateTimeOffset? LastModifiedAt
     );

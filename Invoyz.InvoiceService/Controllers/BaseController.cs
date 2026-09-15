@@ -1,7 +1,7 @@
 ﻿using ErrorOr;
+using Invoyz.InvoiceService.Application.CQRS;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace Invoyz.InvoiceService.Controllers;
 
@@ -20,18 +20,24 @@ public abstract class BaseController(IMediator mediator) : ControllerBase
         var result = await mediator.Send(command, cancellationToken);
         return DispatchCommandResult(result);
     }
-    public virtual async Task<IActionResult> DeleteAsync<T>(T command, CancellationToken cancellationToken) where T : IRequest<Error?>
+    public virtual async Task<IActionResult> DeleteAsync<T>(T command, CancellationToken cancellationToken) where T : BaseCQRSWithId, IRequest<Error?>
     {
+        if (command.Id == default)
+            return ValidationProblem("Id is required");
+
         var result = await mediator.Send(command, cancellationToken);
-        return DispatchCommandResult(result);
+        return DispatchDeleteResult(result);
     }
     public virtual async Task<IActionResult> GetAsync<T,T1>(T query,CancellationToken cancellationToken) where T: IRequest<IReadOnlyCollection<T1>>
     {
         var result = await mediator.Send(query, cancellationToken);
         return Ok(result);
     }
-    public virtual async Task<IActionResult> GetByIdAsync<T,T1>(T query, CancellationToken cancellationToken) where T : IRequest<ErrorOr<T1>>
+    public virtual async Task<IActionResult> GetByIdAsync<T, T1>(T query, CancellationToken cancellationToken) where T : BaseCQRSWithId, IRequest<ErrorOr<T1>>
     {
+        if (query.Id == default)
+            return ValidationProblem("Id is required");
+
         var result = await mediator.Send(query, cancellationToken);
         return DispatchQueryResult(result);
     }
@@ -45,10 +51,17 @@ public abstract class BaseController(IMediator mediator) : ControllerBase
         => result.HasValue ?
         DispatchErrorMessage(result.Value) :
         Ok();
+
+    private IActionResult DispatchDeleteResult(Error? result)
+    => result.HasValue ?
+    DispatchErrorMessage(result.Value) :
+    NoContent();
+
     private IActionResult DispatchCreationResult(ErrorOr<Guid> result)
         => result.IsError ?
         DispatchErrorMessage(result.Errors) :
-        CreatedAtAction("Created", result.Value);
+        Created($"{Request.Path}/{result.Value}",result.Value);
+
     private IActionResult DispatchErrorMessage(params List<Error> errors)
     {
         if (errors.Count == 1)
@@ -66,6 +79,7 @@ public abstract class BaseController(IMediator mediator) : ControllerBase
             {
                 ErrorType.Conflict => 409,
                 ErrorType.Validation => 400,
+                ErrorType.NotFound => 404,
                 _ => 500
             };
     }

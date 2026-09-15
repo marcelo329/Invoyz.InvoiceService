@@ -4,4 +4,4 @@ using MediatR;
 
 namespace Invoyz.InvoiceService.Application.CQRS.Customers.Queries.Models;
 
-public record GetCustomerByIdQuery(Guid Id) : IRequest<ErrorOr<CustomerContract>>;
+public record GetCustomerByIdQuery(Guid Id) : BaseCQRSWithId(Id), IRequest<ErrorOr<CustomerContract>>;

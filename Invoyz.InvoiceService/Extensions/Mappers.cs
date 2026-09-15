@@ -15,7 +15,7 @@ public static class Mappers
 
     public static UpdateCustomerCommand MapToUpdateCustomerCommand(this UpdateCustomerContract contract, Guid id)
         => new UpdateCustomerCommand(
-            Id: contract.Id,
+            Id: id,
             Name: contract.Name,
             Email: contract.Email,
             Address: contract.Address,

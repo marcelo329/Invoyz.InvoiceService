@@ -20,7 +20,7 @@ public sealed class CreateCustomerCommandHandler(
             var vatNumberInUse = await _customerRepository.GetByVatNumberAsync(request.VatNumber, cancellationToken);
 
             if (vatNumberInUse != null)
-                return Error.Conflict("Vat number already in use on customer with id {customerId}", vatNumberInUse.Id.ToString());
+                return Error.Conflict($"Vat number already in use on customer with id {vatNumberInUse.Id}");
 
             var result = await _customerRepository.CreateAsync(new Domains.Entities.CustomerEntity
             {
@@ -30,7 +30,7 @@ public sealed class CreateCustomerCommandHandler(
                 VatNumber = request.VatNumber
             }, cancellationToken);
 
-            if (result.State != Microsoft.EntityFrameworkCore.EntityState.Added)
+            if (result.Entity.Id == default)
             {
                 _logger.LogError(msg);
                 return Error.Failure(msg);

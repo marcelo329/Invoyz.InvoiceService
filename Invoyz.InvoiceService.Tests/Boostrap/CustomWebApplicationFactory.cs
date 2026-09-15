@@ -1,46 +1,66 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Invoyz.InvoiceService.Application.Data;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Data.Common;
 
 namespace Invoyz.InvoiceService.Tests.Boostrap;
 
 public class CustomWebApplicationFactory<TProgram>
     : WebApplicationFactory<TProgram> where TProgram : class
 {
+    // Held open for the lifetime of the factory: closing the last connection to a
+    // ":memory:" database destroys it.
+    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>
         {
             var dbContextDescriptor = services.SingleOrDefault(
                 d => d.ServiceType ==
-                    typeof(IDbContextOptionsConfiguration<ApplicationDbContext>));
+                    typeof(IDbContextOptionsConfiguration<AppDbContext>));
 
-            services.Remove(dbContextDescriptor);
+            if (dbContextDescriptor is not null)
+                services.Remove(dbContextDescriptor);
 
             var dbConnectionDescriptor = services.SingleOrDefault(
                 d => d.ServiceType ==
                     typeof(DbConnection));
 
-            services.Remove(dbConnectionDescriptor);
+            if (dbConnectionDescriptor is not null)
+                services.Remove(dbConnectionDescriptor);
 
-            // Create open SqliteConnection so EF won't automatically close it.
-            services.AddSingleton<DbConnection>(container =>
-            {
-                var connection = new SqliteConnection("DataSource=:memory:");
-                connection.Open();
+            _connection.Open();
+            services.AddSingleton<DbConnection>(_connection);
 
-                return connection;
-            });
-
-            services.AddDbContext<ApplicationDbContext>((container, options) =>
-            {
-                var connection = container.GetRequiredService<DbConnection>();
-                options.UseSqlite(connection);
-            });
+            services.AddDbContext<AppDbContext>((container, options) =>
+                options.UseSqlite(
+                    container.GetRequiredService<DbConnection>(),
+                    sqlite => sqlite.MigrationsAssembly("Invoyz.InvoiceService.Infra")));
         });
 
         builder.UseEnvironment("Development");
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+
+        using var scope = host.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+
+        return host;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing)
+            _connection.Dispose();
     }
 }

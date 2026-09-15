@@ -26,14 +26,14 @@ public sealed class UpdateCustomerCommandHandler(
             var vatNumberInUse = await _customerRepository.GetByVatNumberAsync(request.VatNumber, cancellationToken);
 
             if(vatNumberInUse != null && vatNumberInUse.Id != request.Id)
-                return Error.Conflict("Vat number already in use on customer with id {customerId}", vatNumberInUse.Id.ToString());
+                return Error.Conflict($"Vat number already in use on customer with id {vatNumberInUse.Id}");
 
             var sameName = request.Name.Equals(customer.Name);
             var sameAddress = request.Address.Equals(customer.Address);
             var sameVatNumber = request.VatNumber.Equals(customer.VatNumber);
             var sameEmail = request.Email.Equals(customer.Email);
 
-            if (sameName || sameAddress || sameVatNumber || sameEmail)
+            if (sameName && sameAddress && sameVatNumber && sameEmail)
                 return Error.Conflict("No changes detected. No changes applied.");
 
             customer.Address = request.Address;

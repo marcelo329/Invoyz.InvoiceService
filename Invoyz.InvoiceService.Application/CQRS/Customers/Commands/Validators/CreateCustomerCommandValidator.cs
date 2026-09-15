@@ -22,5 +22,9 @@ public class CreateCustomerCommandValidator : AbstractValidator<CreateCustomerCo
         RuleFor(p => p.Email)
             .EmailAddress()
             .When(p => !string.IsNullOrEmpty(p.Email));
+
+        RuleFor(p => p.VatNumber)
+            .NotEmpty()
+            .WithMessage("VatNumber is required");
     }
 }
