@@ -2,6 +2,8 @@ using Invoyz.InvoiceService.Application.Data;
 using Invoyz.InvoiceService.Application.Data.Repositories.Interfaces;
 using Invoyz.InvoiceService.Application.Data.Repositories.SubClasses;
 using Invoyz.InvoiceService.Infra;
+using Serilog;
+using Serilog.Enrichers.Span;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +12,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Host.UseSerilog((context, loggerConfig) =>
+    loggerConfig
+    .Enrich.WithSpan()
+    .WriteTo.Console()
+    );
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+});
 
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
@@ -24,6 +40,8 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();

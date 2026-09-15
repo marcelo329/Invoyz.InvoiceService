@@ -7,7 +7,7 @@ namespace Invoyz.InvoiceService.Application.Data.Repositories;
 
 public abstract class BaseRepository<TEntity> where TEntity : BaseEntity
 {
-    private readonly AppDbContext appDbContext;
+    protected readonly AppDbContext appDbContext;
 
     protected BaseRepository(AppDbContext appDbContext)
     {
