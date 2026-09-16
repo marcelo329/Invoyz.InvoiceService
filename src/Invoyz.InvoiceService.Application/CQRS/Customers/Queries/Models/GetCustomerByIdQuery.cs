@@ -1,5 +1,5 @@
 ﻿using ErrorOr;
-using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
+using Invoyz.InvoiceService.Contracts.RestAPI.OutboundContracts;
 using MediatR;
 
 namespace Invoyz.InvoiceService.Application.CQRS.Customers.Queries.Models;

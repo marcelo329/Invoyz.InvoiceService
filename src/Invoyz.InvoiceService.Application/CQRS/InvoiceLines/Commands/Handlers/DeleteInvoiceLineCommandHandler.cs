@@ -1,7 +1,9 @@
 using ErrorOr;
 using Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Models;
 using Invoyz.InvoiceService.Application.Data.Repositories.Interfaces;
+using Invoyz.InvoiceService.Application.EventServices.Events;
 using Invoyz.InvoiceService.Application.Helpers;
+using MassTransit;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +11,7 @@ namespace Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Handlers;
 
 public sealed class DeleteInvoiceLineCommandHandler(
     IInvoiceRepository _invoiceRepository,
+    IPublishEndpoint _publishEndpoint,
     ILogger<DeleteInvoiceLineCommandHandler> _logger) : IRequestHandler<DeleteInvoiceLineCommand, Error?>
 {
     public async Task<Error?> Handle(DeleteInvoiceLineCommand request, CancellationToken cancellationToken)
@@ -47,6 +50,9 @@ public sealed class DeleteInvoiceLineCommandHandler(
                 _logger.LogWarning("Failed to delete invoice line {lineId}.", request.Id);
                 return Error.Failure($"Failed to delete invoice line with id {request.Id}.");
             }
+
+            await _publishEndpoint.Publish(new InvoiceUpdated(request.InvoiceId));
+            _logger.LogInformation("{EventName} published", nameof(InvoiceUpdated));
 
             _logger.LogInformation("Invoice line {lineId} deleted successfully.", request.Id);
 

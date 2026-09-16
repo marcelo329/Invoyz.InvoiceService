@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="Invoyz.InvoiceService.InvoiceWorker/Invoyz.InvoiceService.InvoiceWorker.csproj" Id="a3ac0a19-5ca3-4dbf-b7fe-9f4802d50565" />
   <Project Path="src/Invoyz.InvoiceService.Application/Invoyz.InvoiceService.Application.csproj" />
   <Project Path="src/Invoyz.InvoiceService.Contracts/Invoyz.InvoiceService.Contracts.csproj" />
   <Project Path="src/Invoyz.InvoiceService.Domains/Invoyz.InvoiceService.Domains.csproj" />

@@ -1,8 +1,5 @@
-namespace Invoyz.InvoiceService.Application.CQRS.Invoices;
+﻿namespace Invoyz.InvoiceService.Application.CQRS.Invoices;
 
-/// <summary>
-/// The column stays a string, so the allowed set is enforced here and normalised on write.
-/// </summary>
 public static class InvoiceStatuses
 {
     public const string Draft = "Draft";

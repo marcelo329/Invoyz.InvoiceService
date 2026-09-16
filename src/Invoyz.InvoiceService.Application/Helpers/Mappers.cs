@@ -1,4 +1,4 @@
-using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
+using Invoyz.InvoiceService.Contracts.RestAPI.OutboundContracts;
 using Invoyz.InvoiceService.Domains.Entities;
 
 namespace Invoyz.InvoiceService.Application.Helpers;

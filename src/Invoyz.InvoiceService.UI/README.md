@@ -101,12 +101,33 @@ repository with the same interface as the top-level ones.
 - Lists page with `page` / `pageSize`. The API returns a bare array with no total
   count, so "next page" is inferred from a full page of results.
 
-## PDF generation
+## Invoice PDF download
 
-Not implemented. `src/pdf/InvoicePdfGenerator.ts` defines the port and ships a
-null-object implementation that reports itself unavailable and throws if invoked, so
-the button, its wiring and its error handling are all real and exercised.
+`src/pdf/InvoicePdfGenerator.ts` defines the port. Two implementations exist:
 
-To supply a real one, implement the interface and change the single line in
-`src/core/container.ts` that constructs `NotImplementedInvoicePdfGenerator`. No view
-or service needs to change.
+| Implementation | Behaviour |
+| --- | --- |
+| `ApiInvoicePdfGenerator` | Fetches the document from the API and hands it to the browser |
+| `NotImplementedInvoicePdfGenerator` | Null object — reports itself unavailable and throws if invoked |
+
+`src/core/container.ts` picks one; swapping that single line disables or re-enables the
+feature without touching a view.
+
+The download path is deliberately split:
+
+- `HttpClient.getBinary()` returns `{ blob, fileName }`. `AxiosHttpClient` implements it
+  with `responseType: 'blob'`, and translates error bodies specially — with a blob
+  response type the *error* payload is also a Blob, so it is read as text and parsed
+  before building the `ApiError`. Without that, every failure reads `[object Blob]`.
+- `core/download.ts` turns a blob into a browser download and revokes the object URL
+  on a delay; revoking immediately cancels the download in some browsers.
+- The file name comes from `Content-Disposition` when the server sends one
+  (`filename*` preferred, for non-ASCII names), otherwise it falls back to the invoice.
+
+**Cross-origin caveat:** browsers hide `Content-Disposition` unless the API lists it in
+`Access-Control-Expose-Headers`. Behind the dev proxy everything is same-origin so this
+never shows up; in production the file name would silently fall back.
+
+Documents are generated **asynchronously** on the API side (MassTransit event →
+QuestPDF → file on disk), so a download requested immediately after saving can beat the
+generator.

@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Novo Perfil",
+    "Projects": [
+      {
+        "Path": "src\\Invoyz.InvoiceService\\Invoyz.InvoiceService.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "Invoyz.InvoiceService.InvoiceWorker\\Invoyz.InvoiceService.InvoiceWorker.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

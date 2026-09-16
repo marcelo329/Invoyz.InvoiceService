@@ -28,15 +28,15 @@ So every command needs `--project` (where migrations are written) **and** `--sta
 ## Commands
 
 ```bash
-dotnet ef migrations add <Name> --project Invoyz.InvoiceService.Infra --startup-project Invoyz.InvoiceService
+dotnet ef migrations add <Name> --project src/Invoyz.InvoiceService.Infra --startup-project src/Invoyz.InvoiceService
 ```
 
 ```bash
-dotnet ef database update --project Invoyz.InvoiceService.Infra --startup-project Invoyz.InvoiceService
+dotnet ef database update --project src/Invoyz.InvoiceService.Infra --startup-project src/Invoyz.InvoiceService
 ```
 
 ```bash
-dotnet ef migrations remove --project Invoyz.InvoiceService.Infra --startup-project Invoyz.InvoiceService
+dotnet ef migrations remove --project src/Invoyz.InvoiceService.Infra --startup-project src/Invoyz.InvoiceService
 ```
 
 `--output-dir` is unnecessary; `Migrations/` is already the default and exists.

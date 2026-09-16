@@ -16,7 +16,7 @@ Build the project, then run its executable.
 ## Full suite
 
 ```bash
-dotnet build Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj && ./Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe
+dotnet build src/Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj && ./src/Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe
 ```
 
 ## A single test or class
@@ -24,11 +24,11 @@ dotnet build Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj && .
 Wildcards are supported at either end. Simple filters (`-method`, `-class`) and query filters (`-filter`) cannot be mixed.
 
 ```bash
-./Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe -method "*Put_WithNoChanges*"
+./src/Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe -method "*Put_WithNoChanges*"
 ```
 
 ```bash
-./Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe -class "Invoyz.InvoiceService.Tests.CustomerControllerIntegrationTests"
+./src/Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe -class "Invoyz.InvoiceService.Tests.CustomerControllerIntegrationTests"
 ```
 
 ## Reading the output
@@ -36,7 +36,7 @@ Wildcards are supported at either end. Simple filters (`-method`, `-class`) and 
 The API logs through Serilog to the same console, so the run is dominated by request logs and SQL. Filter to what matters:
 
 ```bash
-./Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe 2>&1 | grep -E "\[FAIL\]|Assert\.|Expected:|Actual:|Total:"
+./src/Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe 2>&1 | grep -E "\[FAIL\]|Assert\.|Expected:|Actual:|Total:"
 ```
 
 For one failure's full detail, re-run that test alone with `-method` and read the whole output — the exception and stack trace are interleaved with the request log.
@@ -51,16 +51,18 @@ A test host is still running, almost always a Visual Studio debug session paused
 
 ## Interpreting failures
 
-All 94 tests currently pass. They are written against intended behaviour, so a failure reports a real product bug — report the cause and fix the code; never weaken an assertion to make a test pass.
+When the solution builds, all 94 tests pass. They are written against intended behaviour, so a failure reports a real product bug — report the cause and fix the code; never weaken an assertion to make a test pass.
+
+**Check the build first.** The contracts moved to `Contracts.RestAPI.*`, and test files still importing the old `Contracts.InboundContracts` namespace fail to compile — a build error, not a test failure, and the two read very differently in the output.
 
 Green is not proof the flow is correct. The suite misses issues listed under "Known gaps" in CLAUDE.md, notably paging order, because some tests build their expectation the same way the code computes the result. To check a flow properly, exercise the running API:
 
 ```bash
-dotnet ef database update --project Invoyz.InvoiceService.Infra --startup-project Invoyz.InvoiceService
+dotnet ef database update --project src/Invoyz.InvoiceService.Infra --startup-project src/Invoyz.InvoiceService
 ```
 
 ```bash
-dotnet run --project Invoyz.InvoiceService
+dotnet run --project src/Invoyz.InvoiceService
 ```
 
 then drive `http://localhost:5271/api/v1/Customers` with curl. Without the migration step the API starts fine but every request fails with `no such table: Customers` — SQLite creates an empty file on connect.

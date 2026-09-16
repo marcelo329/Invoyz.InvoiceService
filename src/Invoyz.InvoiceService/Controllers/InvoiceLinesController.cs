@@ -1,7 +1,7 @@
 using Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Models;
 using Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Queries.Models;
-using Invoyz.InvoiceService.Contracts.InboundContracts.InvoiceLines;
-using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.InvoiceLines;
+using Invoyz.InvoiceService.Contracts.RestAPI.OutboundContracts;
 using Invoyz.InvoiceService.Extensions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

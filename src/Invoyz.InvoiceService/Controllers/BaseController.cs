@@ -7,7 +7,7 @@ namespace Invoyz.InvoiceService.Controllers;
 
 [Route("api/v{version:apiVersion}/[controller]")]
 [ApiController]
-public abstract class BaseController(IMediator mediator) : ControllerBase
+public abstract class BaseController(IMediator? mediator) : ControllerBase
 {
 
     public virtual async Task<IActionResult> PostAsync<T>(T command, CancellationToken cancellationToken) where T : IRequest<ErrorOr<Guid>>

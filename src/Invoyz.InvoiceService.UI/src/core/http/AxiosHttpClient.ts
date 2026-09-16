@@ -7,7 +7,31 @@ import {
   kindForStatus,
   type ProblemDetails,
 } from '@/core/errors/ApiError'
-import type { HttpClient, HttpRequest } from './HttpClient'
+import type { BinaryResponse, HttpClient, HttpRequest } from './HttpClient'
+
+/**
+ * Reads the suggested file name out of `Content-Disposition`, preferring the RFC 5987
+ * `filename*` form when present so non-ASCII names survive.
+ */
+function fileNameFromContentDisposition(header: unknown): string | null {
+  if (typeof header !== 'string') {
+    return null
+  }
+
+  const encoded = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header)
+
+  if (encoded?.[1]) {
+    try {
+      return decodeURIComponent(encoded[1].trim().replace(/^"|"$/g, ''))
+    } catch {
+      // Malformed encoding: fall back to the plain form below.
+    }
+  }
+
+  const plain = /filename="?([^";]+)"?/i.exec(header)
+
+  return plain?.[1]?.trim() ?? null
+}
 
 /**
  * Adapter: the only file in the application that knows Axios exists.
@@ -61,6 +85,54 @@ export class AxiosHttpClient implements HttpClient {
         params: request.params,
         signal: request.signal,
       }),
+    )
+  }
+
+  async getBinary(request: HttpRequest): Promise<BinaryResponse> {
+    try {
+      const response = await this.instance.get<Blob>(request.url, {
+        params: request.params,
+        signal: request.signal,
+        responseType: 'blob',
+      })
+
+      return {
+        blob: response.data,
+        fileName: fileNameFromContentDisposition(response.headers['content-disposition']),
+      }
+    } catch (error) {
+      // With responseType 'blob' an error body arrives as a Blob too, so the usual
+      // synchronous translation would report "[object Blob]" instead of the reason.
+      throw await this.translateBinaryFailure(error)
+    }
+  }
+
+  private async translateBinaryFailure(error: unknown): Promise<ApiError> {
+    if (!axios.isAxiosError(error) || !error.response) {
+      return this.translate(error)
+    }
+
+    const { status, data } = error.response
+
+    if (data instanceof Blob) {
+      try {
+        const problem = JSON.parse(await data.text()) as ProblemDetails
+
+        return new ApiError(
+          kindForStatus(status),
+          describeProblem(problem, `Request failed with status ${status}.`),
+          status,
+          problem?.errors ?? {},
+        )
+      } catch {
+        // Not JSON — fall through to the generic message below.
+      }
+    }
+
+    return new ApiError(
+      kindForStatus(status),
+      `Request failed with status ${status}.`,
+      status,
     )
   }
 

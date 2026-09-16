@@ -1,11 +1,10 @@
 using Invoyz.InvoiceService.Application.CQRS.Customers.Commands.Models;
 using Invoyz.InvoiceService.Application.CQRS.Customers.Queries.Models;
-using Invoyz.InvoiceService.Contracts.InboundContracts.Customers;
-using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.Customers;
+using Invoyz.InvoiceService.Contracts.RestAPI.OutboundContracts;
 using Invoyz.InvoiceService.Extensions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations;
 
 namespace Invoyz.InvoiceService.Controllers
 {

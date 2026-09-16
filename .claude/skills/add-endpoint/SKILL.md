@@ -10,8 +10,8 @@ Every operation is one vertical slice through the layers. Four slices exist — 
 ## Layout
 
 ```
-Contracts/InboundContracts/<Entity>/          request contracts
-Contracts/InboundContracts/OutboundContracts/ response contracts
+Contracts/RestAPI/InboundContracts/<Entity>/  request contracts
+Contracts/RestAPI/OutboundContracts/          response contracts
 Application/CQRS/<Entity>/Commands/Models/    command records
 Application/CQRS/<Entity>/Commands/Handlers/
 Application/CQRS/<Entity>/Commands/Validators/
@@ -77,5 +77,7 @@ Every action then takes the parent id as a route parameter, and handlers scope t
 ## Notes
 
 - Money on invoices and lines is derived in `Application/Helpers/InvoiceTotals.cs` and never taken from a payload. Any handler touching a line must call `ApplyLineTotals` then `Recalculate` on the parent invoice, and save the invoice.
+- **A handler that changes an invoice or one of its lines must publish `InvoiceUpdated`** via the injected `IPublishEndpoint`, after the save succeeds. That event drives PDF regeneration through `InvoiceStatusConsumer`; skipping it leaves the stored document describing a stale invoice. Every existing invoice and line command handler does this — copy one.
+- New services belong in `Application/Bootstrapper.BootstrapApplicationService()`, not `Program.cs`, so the worker host gets them too. `Program.cs` is for HTTP concerns only.
 - Schema changes need a migration; see the `ef-migrations` skill.
-- To exercise an endpoint against a real database, apply migrations first (`dotnet ef database update`), then `dotnet run --project Invoyz.InvoiceService`. Skipping the migration gives an empty `invoyz.db` and `no such table` on every request.
+- To exercise an endpoint against a real database, apply migrations first (`dotnet ef database update`), then `dotnet run --project src/Invoyz.InvoiceService`. Skipping the migration gives an empty `invoyz.db` and `no such table` on every request.

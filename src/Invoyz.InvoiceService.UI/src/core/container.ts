@@ -4,10 +4,8 @@ import { inject } from 'vue'
 import { loadAppConfig, type AppConfig } from '@/config/appConfig'
 import { AxiosHttpClient } from '@/core/http/AxiosHttpClient'
 import type { HttpClient } from '@/core/http/HttpClient'
-import {
-  NotImplementedInvoicePdfGenerator,
-  type InvoicePdfGenerator,
-} from '@/pdf/InvoicePdfGenerator'
+import { ApiInvoicePdfGenerator } from '@/pdf/ApiInvoicePdfGenerator'
+import { type InvoicePdfGenerator } from '@/pdf/InvoicePdfGenerator'
 import { CustomerService } from '@/services/CustomerService'
 import { InvoiceLineServiceFactory } from '@/services/InvoiceLineService'
 import { InvoiceService } from '@/services/InvoiceService'
@@ -49,8 +47,9 @@ export function createServices(config: AppConfig = loadAppConfig()): Services {
     products: new ProductService(http),
     invoices: new InvoiceService(http),
     invoiceLines: new InvoiceLineServiceFactory(http),
-    // Swap this one line for the real generator when it exists.
-    invoicePdf: new NotImplementedInvoicePdfGenerator(),
+    // Swap for NotImplementedInvoicePdfGenerator to disable the feature without
+    // touching the view.
+    invoicePdf: new ApiInvoicePdfGenerator(http),
   }
 }
 

@@ -2,10 +2,10 @@ using Invoyz.InvoiceService.Application.CQRS.Customers.Commands.Models;
 using Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Models;
 using Invoyz.InvoiceService.Application.CQRS.Invoices.Commands.Models;
 using Invoyz.InvoiceService.Application.CQRS.Products.Commands.Models;
-using Invoyz.InvoiceService.Contracts.InboundContracts.Customers;
-using Invoyz.InvoiceService.Contracts.InboundContracts.InvoiceLines;
-using Invoyz.InvoiceService.Contracts.InboundContracts.Invoices;
-using Invoyz.InvoiceService.Contracts.InboundContracts.Products;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.Customers;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.InvoiceLines;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.Invoices;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.Products;
 
 namespace Invoyz.InvoiceService.Extensions;
 

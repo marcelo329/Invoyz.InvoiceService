@@ -1,15 +1,15 @@
 using Invoyz.InvoiceService.Application.Data;
 using Invoyz.InvoiceService.Application.Helpers;
-using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
 using Invoyz.InvoiceService.Domains.Entities;
 using Invoyz.InvoiceService.Tests.Boostrap;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Invoyz.InvoiceService.Contracts.InboundContracts.Customers;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using Invoyz.InvoiceService.Contracts.RestAPI.OutboundContracts;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.Customers;
 
 namespace Invoyz.InvoiceService.Tests;
 

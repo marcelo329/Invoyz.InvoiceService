@@ -5,7 +5,9 @@ This is a full stack application with a UI built in Vue.js and a BFF built in Cs
 
 ## Internal architecture
 
-There are six projects. This implements a Clean architecture with CQRS, facilitated by Mediator pattern.
+There are eight projects. This implements a Clean architecture with CQRS, facilitated by Mediator pattern.
+
+.NET projects live under `src/`, except the worker, which sits at the repository root.
 
 ### Invoyz.InvoiceService
 Restfull webAPI built using the OpenAPI pattern with Swagger. Uses serilog , mediatr, and API versioning.
@@ -20,17 +22,25 @@ As the domain entities used as foundations for the database relations.
 Sits in the outer layer of the clean architecture and has the different services implementations for I/O.
 ### Invoyz.InvoiceService.Tests
 Integration tests run agains the API using a virtual webserver.
+### Invoyz.InvoiceService.UI
+Vue 3 + TypeScript front end consuming the API as a BFF. CRUD for every resource, plus the invoice PDF download. Has its own README.
+### Invoyz.InvoiceService.InvoiceWorker
+Worker host sharing the Application composition root. Intended to run the `InvoiceUpdated` consumer out of process — see the note under "Invoice documents".
 
 ## Project dependencies
 
 ```
 Invoyz.InvoiceService  ->  Application, Contracts, Infra
+InvoiceWorker          ->  Application, Contracts, Infra
 Infra                  ->  Application
 Application            ->  Contracts, Domains
 Contracts              ->  (none)
 Domains                ->  (none)
 Tests                  ->  Invoyz.InvoiceService, Application
+UI                     ->  (none: talks to the API over HTTP)
 ```
+
+`Application/Bootstrapper.BootstrapApplicationService()` registers validators, repositories, the PDF generator and MassTransit. Both hosts call it, so the API and the worker share one composition point; `Program.cs` adds only HTTP concerns.
 
 ## Tech stack
 
@@ -44,7 +54,10 @@ Tests                  ->  Invoyz.InvoiceService, Application
 | Logging | Serilog (console sink, span enricher) | 4.4.0 |
 | API versioning | Asp.Versioning.Http | 10.2.3 |
 | OpenAPI | Swashbuckle.AspNetCore | 10.2.3 |
+| Messaging | MassTransit (in-memory transport) | 9.2.2 |
+| PDF rendering | QuestPDF (community licence) | 2026.9.0 |
 | Tests | xunit.v3 + Microsoft.AspNetCore.Mvc.Testing | 4.0.1 / 10.0.12 |
+| Front end | Vue 3 + Vite + TypeScript + Axios | see the UI README |
 
 ## Prerequisites
 
@@ -62,11 +75,11 @@ dotnet restore Invoyz.InvoiceService.slnx
 ```
 
 ```bash
-dotnet ef database update --project Invoyz.InvoiceService.Infra --startup-project Invoyz.InvoiceService
+dotnet ef database update --project src/Invoyz.InvoiceService.Infra --startup-project src/Invoyz.InvoiceService
 ```
 
 ```bash
-dotnet run --project Invoyz.InvoiceService
+dotnet run --project src/Invoyz.InvoiceService
 ```
 
 | Profile | URL |
@@ -101,11 +114,11 @@ services.AddDbContext<AppDbContext>(opt =>
 Every `dotnet ef` command therefore needs both projects — `--project` for where migrations are written, `--startup-project` for where configuration and the host live:
 
 ```bash
-dotnet ef migrations add <Name> --project Invoyz.InvoiceService.Infra --startup-project Invoyz.InvoiceService
+dotnet ef migrations add <Name> --project src/Invoyz.InvoiceService.Infra --startup-project src/Invoyz.InvoiceService
 ```
 
 ```bash
-dotnet ef database update --project Invoyz.InvoiceService.Infra --startup-project Invoyz.InvoiceService
+dotnet ef database update --project src/Invoyz.InvoiceService.Infra --startup-project src/Invoyz.InvoiceService
 ```
 
 Entities are `Customers`, `Products`, `Invoices` and `InvoiceLines`, all deriving from `BaseEntity` (`Id`, `IsDeleted`, `DeletedAt`, `CreatedAt`, `LastModifiedAt`).
@@ -119,11 +132,11 @@ Entities are `Customers`, `Products`, `Invoices` and `InvoiceLines`, all derivin
 The project uses **xunit.v3**, which runs on Microsoft.Testing.Platform rather than VSTest. On the .NET 10 SDK `dotnet test` fails with `Testing with VSTest target is no longer supported`. Build and run the test executable directly instead:
 
 ```bash
-dotnet build Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj
+dotnet build src/Invoyz.InvoiceService.Tests/Invoyz.InvoiceService.Tests.csproj
 ```
 
 ```bash
-./Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe
+./src/Invoyz.InvoiceService.Tests/bin/Debug/net10.0/Invoyz.InvoiceService.Tests.exe
 ```
 
 Tests within a class share one fixture and therefore one database, so each test reseeds through its own seed helper, which clears the relevant tables first.
@@ -146,6 +159,14 @@ Four resources follow the same shape. `page` and `pageSize` are `ushort`, defaul
 | Invoice lines | `/api/v1/Invoices/{invoiceId}/Lines`, `/api/v1/Invoices/{invoiceId}/Lines/{id}` |
 
 On PUT the **route** id is authoritative; update contracts carry no `Id`.
+
+A fifth, read-only endpoint serves generated documents:
+
+| Method | Route | Returns |
+| --- | --- | --- |
+| GET | `/api/v1/Documents/{invoiceId}` | `application/pdf` as a file download |
+
+Note it is keyed by the invoice **Guid**, not the invoice number.
 
 ### Resource rules
 
@@ -182,4 +203,34 @@ Request validation is FluentValidation driven through a MediatR pipeline behavio
 The behavior returns the handler's own response type carrying `Error.Validation` rather than throwing — throwing would surface as a 500, since the status-code mapping has no case for `ValidationException`.
 
 Each slice has Create/Update/Delete validators. Paging parameters are still unvalidated (see CLAUDE.md, Known gaps).
+
+## Invoice documents
+
+PDFs are produced asynchronously, not on request. Any command that changes an invoice or one of its lines publishes `InvoiceUpdated` over MassTransit:
+
+```
+Create/Update/Delete invoice or line
+  -> IPublishEndpoint.Publish(new InvoiceUpdated(invoiceId))
+    -> InvoiceStatusConsumer                     (MassTransit, in-memory transport)
+      -> IInvoiceRepository.GetEagerLoadingAsync
+        -> IPdfGenerator (QuestPDF)
+          -> {CurrentDirectory}/Invoices/{invoiceId}.pdf
+```
+
+`GET /api/v1/Documents/{invoiceId}` then streams that file back. Documents are written to the host's working directory, so they are per-deployment local state, not shared storage.
+
+Two consequences of the in-memory transport:
+
+- Publisher and consumer must live in the same process. `Invoyz.InvoiceService.InvoiceWorker` starts its own bus, so it does **not** receive events published by the API. Making the worker meaningful means moving to a real broker (RabbitMQ, Azure Service Bus) — the `UsingInMemory` call in `Bootstrapper` is the single place to change.
+- Generation happens after the HTTP response returns, so a client that requests the document immediately after saving can beat the generator and get a missing file.
+
+## Front end
+
+`src/Invoyz.InvoiceService.UI` is a Vue 3 + TypeScript + Vite application covering CRUD for all four resources and the invoice PDF download. See its own README for structure and configuration.
+
+```bash
+cd src/Invoyz.InvoiceService.UI && npm install && npm run dev
+```
+
+Serves on <http://localhost:5173>. The API must be running first. Because the API declares **no CORS policy**, development calls go through the Vite proxy — `VITE_API_PROXY_TARGET` in `.env.development` must point at the profile actually running (`https://localhost:7280`).
 

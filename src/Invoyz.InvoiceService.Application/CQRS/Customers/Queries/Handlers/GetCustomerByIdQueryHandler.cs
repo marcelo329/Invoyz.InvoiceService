@@ -2,7 +2,7 @@
 using Invoyz.InvoiceService.Application.CQRS.Customers.Queries.Models;
 using Invoyz.InvoiceService.Application.Data.Repositories.Interfaces;
 using Invoyz.InvoiceService.Application.Helpers;
-using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
+using Invoyz.InvoiceService.Contracts.RestAPI.OutboundContracts;
 using MediatR;
 
 namespace Invoyz.InvoiceService.Application.CQRS.Customers.Queries.Handlers;

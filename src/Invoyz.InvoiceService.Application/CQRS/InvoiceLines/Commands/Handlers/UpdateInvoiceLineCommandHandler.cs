@@ -1,7 +1,9 @@
 using ErrorOr;
 using Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Models;
 using Invoyz.InvoiceService.Application.Data.Repositories.Interfaces;
+using Invoyz.InvoiceService.Application.EventServices.Events;
 using Invoyz.InvoiceService.Application.Helpers;
+using MassTransit;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +12,7 @@ namespace Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Handlers;
 public sealed class UpdateInvoiceLineCommandHandler(
     IInvoiceRepository _invoiceRepository,
     IProductRepository _productRepository,
+    IPublishEndpoint _publishEndpoint,
     ILogger<UpdateInvoiceLineCommandHandler> _logger) : IRequestHandler<UpdateInvoiceLineCommand, Error?>
 {
     public async Task<Error?> Handle(UpdateInvoiceLineCommand request, CancellationToken cancellationToken)
@@ -64,6 +67,9 @@ public sealed class UpdateInvoiceLineCommandHandler(
                 _logger.LogError("Error updating invoice line.Error:" + errorUpdating.Value.Code);
                 return errorUpdating;
             }
+
+            await _publishEndpoint.Publish(new InvoiceUpdated(request.InvoiceId));
+            _logger.LogInformation("{EventName} published", nameof(InvoiceUpdated));
 
             _logger.LogInformation("Invoice line {lineId} updated successfully.", request.Id);
 

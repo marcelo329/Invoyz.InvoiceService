@@ -1,8 +1,5 @@
 using Invoyz.InvoiceService.Application;
 using Invoyz.InvoiceService.Application.CQRS.Customers.Queries.Models;
-using Invoyz.InvoiceService.Application.Data;
-using Invoyz.InvoiceService.Application.Data.Repositories.Interfaces;
-using Invoyz.InvoiceService.Application.Data.Repositories.SubClasses;
 using Invoyz.InvoiceService.Infra;
 using Serilog;
 using Serilog.Enrichers.Span;
@@ -14,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddFluentValidation();
+builder.Services.BootstrapApplicationService();
 
 builder.Host.UseSerilog((context, loggerConfig) =>
     loggerConfig
@@ -36,10 +33,7 @@ builder.Services.AddApiVersioning(options =>
     options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
 });
 
-builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
-builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
-builder.Services.AddScoped<IInvoiceLineRepository, InvoiceLineRepository>();
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
 
 builder.Services.ConfigureSqliteAsDatabaseEngine(builder.Configuration);
 

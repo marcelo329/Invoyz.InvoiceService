@@ -1,7 +1,8 @@
 using Invoyz.InvoiceService.Application.Data;
-using Invoyz.InvoiceService.Contracts.InboundContracts.InvoiceLines;
 using Invoyz.InvoiceService.Contracts.InboundContracts.Invoices;
-using Invoyz.InvoiceService.Contracts.InboundContracts.OutboundContracts;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.InvoiceLines;
+using Invoyz.InvoiceService.Contracts.RestAPI.InboundContracts.Invoices;
+using Invoyz.InvoiceService.Contracts.RestAPI.OutboundContracts;
 using Invoyz.InvoiceService.Domains.Entities;
 using Invoyz.InvoiceService.Tests.Boostrap;
 using Microsoft.AspNetCore.Mvc.Testing;

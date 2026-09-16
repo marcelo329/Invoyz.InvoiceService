@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-Invoyz.InvoiceService.InvoiceWorker-24e353cf-9b82-44d4-8248-4224a062579d</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\Invoyz.InvoiceService.Application\Invoyz.InvoiceService.Application.csproj" />
+    <ProjectReference Include="..\src\Invoyz.InvoiceService.Contracts\Invoyz.InvoiceService.Contracts.csproj" />
+    <ProjectReference Include="..\src\Invoyz.InvoiceService.Infra\Invoyz.InvoiceService.Infra.csproj" />
+  </ItemGroup>
+</Project>

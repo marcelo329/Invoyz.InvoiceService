@@ -1,8 +1,10 @@
 using ErrorOr;
 using Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Models;
 using Invoyz.InvoiceService.Application.Data.Repositories.Interfaces;
+using Invoyz.InvoiceService.Application.EventServices.Events;
 using Invoyz.InvoiceService.Application.Helpers;
 using Invoyz.InvoiceService.Domains.Entities;
+using MassTransit;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +13,7 @@ namespace Invoyz.InvoiceService.Application.CQRS.InvoiceLines.Commands.Handlers;
 public sealed class CreateInvoiceLineCommandHandler(
     IInvoiceRepository _invoiceRepository,
     IProductRepository _productRepository,
+    IPublishEndpoint _publishEndpoint,
     ILogger<CreateInvoiceLineCommandHandler> _logger) : IRequestHandler<CreateInvoiceLineCommand, ErrorOr<Guid>>
 {
     public async Task<ErrorOr<Guid>> Handle(CreateInvoiceLineCommand request, CancellationToken cancellationToken)
@@ -54,6 +57,9 @@ public sealed class CreateInvoiceLineCommandHandler(
                 _logger.LogError("Error creating invoice line.Error:" + errorUpdating.Value.Code);
                 return Error.Failure(msg);
             }
+
+            await _publishEndpoint.Publish(new InvoiceUpdated(request.InvoiceId));
+            _logger.LogInformation("{EventName} published", nameof(InvoiceUpdated));
 
             _logger.LogInformation("Invoice line {lineId} created on invoice {invoiceId}.", line.Id, invoice.Id);
 

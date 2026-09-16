@@ -1,5 +1,7 @@
+using Invoyz.InvoiceService.Application.CQRS.Invoices.Queries.Models;
 using Invoyz.InvoiceService.Application.Data.Repositories.Interfaces;
 using Invoyz.InvoiceService.Domains.Entities;
+using Invoyz.InvoiceService.InvoiceWorker.InvoiceGeneration.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Invoyz.InvoiceService.Application.Data.Repositories.SubClasses;
@@ -32,4 +34,37 @@ public sealed class InvoiceRepository : BaseRepository<InvoiceEntity>, IInvoiceR
         .Skip((page - 1) * totalRows)
         .Take(totalRows)
         .ToListAsync(cancellationToken);
+
+    public async Task<GetInvoiceEagerLoadingDTO?> GetEagerLoadingAsync(Guid Id, CancellationToken cancellationToken)
+    {
+        var result = await base.appDbContext
+                .Set<InvoiceEntity>()
+                .Include(c => c.Customer)
+                .Include(il => il.InvoiceLines)
+                    .ThenInclude(p => p.Product)
+                .AsNoTracking()
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(a => a.Id.Equals(Id) && !a.IsDeleted, cancellationToken);
+
+        if (result == null)
+            return null;
+
+        return new GetInvoiceEagerLoadingDTO(
+            Name: result.Customer.Name,
+            Address: result.Customer.Address,
+            Email: result.Customer.Email,
+            VatNumber: result.Customer.VatNumber,
+            IssueDate: result.IssueDate,
+            DueDate: result.DueDate,
+            Status: result.Status,
+            InvoiceLines: result.InvoiceLines.Select(a => 
+                new GetInvoiceLineDTO(
+                    ProductName: a.Product.Name,
+                    Description: a.Product.Description,
+                    UnitPrice: a.Product.UnitPrice,
+                    TaxRate: a.Product.TaxRate,
+                    Quantity: a.Quantity))
+                .ToArray()
+            );
+    }
 }
