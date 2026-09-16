@@ -12,5 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Invoyz.InvoiceService.Application\Invoyz.InvoiceService.Application.csproj" />
+    <ProjectReference Include="..\Invoyz.InvoiceService.Infra\Invoyz.InvoiceService.Infra.csproj" />
   </ItemGroup>
 </Project>
